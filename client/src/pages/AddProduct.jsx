@@ -3,7 +3,12 @@ import axios from "axios";
 import Header from '../components/Header'; 
 import Footer from '../components/Footer';
 
-const API_BASE = "http://localhost:5001/api";
+axios.post(`${API_BASE}/orders/checkout`, orderData, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
+
 
 const AddProduct = () => {
   const token = localStorage.getItem("token");

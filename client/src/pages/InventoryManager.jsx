@@ -5,9 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import CategoryNav from '../components/CategoryNav'; // Can be reused for filtering the list
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
-const API_BASE = 'http://localhost:5001/api/products'; // Base URL
-const CATEGORY_API = 'http://localhost:5001/api/categories'; // Category URL
+export const PRODUCT_API = `${API_BASE}/products`;
+export const CATEGORY_API = `${API_BASE}/categories`;
+
 
 const InventoryManager = () => {
     const [products, setProducts] = useState([]);

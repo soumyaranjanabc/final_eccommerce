@@ -96,7 +96,16 @@ export const CartProvider = ({ children }) => {
                 totalAmount: getTotal(),
             };
             
-            const response = await axios.post('http://localhost:5001/api/orders/checkout', orderData);
+            const response = await axios.post(
+  `${import.meta.env.VITE_API_BASE_URL}/api/orders/checkout`,
+  orderData,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
 
             if (response.status === 200) {
                 clearCart();

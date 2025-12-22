@@ -5,7 +5,8 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 // Base URL for the backend API
-const API_URL = 'http://localhost:5001/api/auth'; 
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}/api/auth`;
+
 
 export const AuthProvider = ({ children }) => {
     // Check local storage for initial token/user state

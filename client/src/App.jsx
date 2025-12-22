@@ -7,7 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 
 // Page Components
-import HomePage from './pages/HomePage';
+import HomePage from './pages/Homepage';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import AddProduct from './pages/AddProduct';

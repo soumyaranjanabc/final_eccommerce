@@ -1,9 +1,9 @@
-// server/routes/categoryRoutes.js
-const express = require('express');
+import express from "express";
+import { getAllCategories } from "../controllers/categoryController.js";
+
 const router = express.Router();
-const categoryController = require('../controllers/categoryController');
 
 // Public route: Fetch all categories
-router.get('/', categoryController.getAllCategories);
+router.get("/", getAllCategories);
 
-module.exports = router;
+export default router;

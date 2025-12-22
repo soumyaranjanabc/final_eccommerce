@@ -1,27 +1,28 @@
-// server/controllers/productController.js
-const productModel = require('../models/productModel');
+import {
+  findAllProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct as deleteProductModel,
+} from "../models/productModel.js";
 
 /**
  * GET /api/products
  */
-const getAllProducts = async (req, res) => {
+export const getAllProducts = async (req, res) => {
   try {
-    const products = await productModel.findAllProducts();
+    const products = await findAllProducts();
     res.json(products);
   } catch (err) {
-    console.error('Error fetching products:', err);
-    res.status(500).json({ error: 'Failed to fetch products' });
+    console.error("Error fetching products:", err);
+    res.status(500).json({ error: "Failed to fetch products" });
   }
 };
 
 /**
  * POST / PUT /api/products/manage
+ * Prices are handled in ₹ INR
  */
-const manageProduct = async (req, res) => {
-  console.log('REQ BODY:', req.body);
-  console.log('REQ USER:', req.user);
-  console.log('REQ PARAMS:', req.params);
-
+export const manageProduct = async (req, res) => {
   const productId = req.params.id;
 
   let {
@@ -33,14 +34,14 @@ const manageProduct = async (req, res) => {
     category_id,
   } = req.body;
 
-  // Convert to correct types
-  price = Number(price);
-  stock_quantity = Number(stock_quantity);
-  category_id = Number(category_id);
+  // Convert to correct types (₹ INR)
+  const priceInr = Number(price);
+  const stockQuantity = Number(stock_quantity);
+  const categoryId = Number(category_id);
 
-  if (!name || !price || !stock_quantity || !category_id) {
+  if (!name || priceInr <= 0 || stockQuantity < 0 || !categoryId) {
     return res.status(400).json({
-      error: 'Missing required fields',
+      error: "Missing or invalid required fields",
     });
   }
 
@@ -48,49 +49,43 @@ const manageProduct = async (req, res) => {
     let product;
 
     if (productId) {
-      product = await productModel.updateProduct(
+      product = await updateProduct(
         productId,
         name,
         description,
-        price,
-        stock_quantity,
+        priceInr,
+        stockQuantity,
         image_url || null,
-        category_id
+        categoryId
       );
-      return res.json({ message: 'Product updated', product });
+      return res.json({ message: "Product updated", product });
     }
 
-    product = await productModel.createProduct(
+    product = await createProduct(
       name,
       description,
-      price,
-      stock_quantity,
+      priceInr,
+      stockQuantity,
       image_url || null,
-      category_id
+      categoryId
     );
 
-    res.status(201).json({ message: 'Product created', product });
+    res.status(201).json({ message: "Product created", product });
   } catch (err) {
-    console.error('Error managing product:', err);
-    res.status(500).json({ error: 'Product save failed' });
+    console.error("Error managing product:", err);
+    res.status(500).json({ error: "Product save failed" });
   }
 };
 
 /**
  * DELETE /api/products/manage/:id
  */
-const deleteProduct = async (req, res) => {
+export const deleteProduct = async (req, res) => {
   try {
-    await productModel.deleteProduct(req.params.id);
-    res.json({ message: 'Product deleted' });
+    await deleteProductModel(req.params.id);
+    res.json({ message: "Product deleted" });
   } catch (err) {
-    console.error('Delete error:', err);
-    res.status(500).json({ error: 'Delete failed' });
+    console.error("Delete error:", err);
+    res.status(500).json({ error: "Delete failed" });
   }
-};
-
-module.exports = {
-  getAllProducts,
-  manageProduct,
-  deleteProduct,
 };

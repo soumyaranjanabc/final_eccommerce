@@ -1,5 +1,4 @@
-// server/middleware/ownerAuthMiddleware.js
-const isOwner = (req, res, next) => {
+export const isOwner = (req, res, next) => {
   if (
     req.user &&
     Number(req.user.id) === Number(process.env.OWNER_USER_ID)
@@ -7,7 +6,5 @@ const isOwner = (req, res, next) => {
     return next();
   }
 
-  return res.status(403).json({ error: 'Admin access only' });
+  return res.status(403).json({ error: "Admin access only" });
 };
-
-module.exports = { isOwner };

@@ -1,14 +1,20 @@
-// server/routes/productRoutes.js
-const express = require('express');
+import express from "express";
+import {
+  getAllProducts,
+  manageProduct,
+  deleteProduct,
+} from "../controllers/productController.js";
+import { protect } from "../middleware/authMiddleware.js";
+import { isOwner } from "../middleware/ownerAuthMiddleware.js";
+
 const router = express.Router();
-const productController = require('../controllers/productController');
-const { protect } = require('../middleware/authMiddleware');
-const { isOwner } = require('../middleware/ownerAuthMiddleware');
 
-router.get('/', productController.getAllProducts);
+// Public
+router.get("/", getAllProducts);
 
-router.post('/manage', protect, isOwner, productController.manageProduct);
-router.put('/manage/:id', protect, isOwner, productController.manageProduct);
-router.delete('/manage/:id', protect, isOwner, productController.deleteProduct);
+// Admin / Owner
+router.post("/manage", protect, isOwner, manageProduct);
+router.put("/manage/:id", protect, isOwner, manageProduct);
+router.delete("/manage/:id", protect, isOwner, deleteProduct);
 
-module.exports = router;
+export default router;

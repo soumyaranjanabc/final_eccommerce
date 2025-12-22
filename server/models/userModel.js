@@ -1,32 +1,44 @@
-// server/models/productModel.js (UPDATED: Add Update Function)
-const pool = require('../config/db');
-
-// ... (findAllProducts, findProductById, updateProductStock functions remain the same) ...
+import pool from "../config/db.js";
 
 /**
- * Updates an existing product's details in the database.
+ * Inserts a new user into the database.
  */
-const updateProduct = async (id, name, description, price, stockQuantity, imageUrl, categoryId) => {
-    const result = await pool.query(
-        `UPDATE products 
-         SET name = $2, description = $3, price = $4, stock_quantity = $5, image_url = $6, category_id = $7
-         WHERE id = $1 
-         RETURNING *`,
-        [id, name, description, price, stockQuantity, imageUrl, categoryId]
-    );
-    return result.rows[0];
+export const createUser = async (
+  name,
+  email,
+  passwordHash,
+  address,
+  phoneNumber
+) => {
+  const result = await pool.query(
+    `INSERT INTO users 
+     (name, email, password_hash, address, phone_number)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, name, email`,
+    [name, email, passwordHash, address, phoneNumber]
+  );
+
+  return result.rows[0];
 };
 
 /**
- * Deletes a product by ID.
+ * Finds a user by their email address.
  */
-const deleteProduct = async (id) => {
-    await pool.query('DELETE FROM products WHERE id = $1', [id]);
+export const findUserByEmail = async (email) => {
+  const result = await pool.query(
+    "SELECT * FROM users WHERE email = $1",
+    [email]
+  );
+  return result.rows[0];
 };
 
-
-module.exports = {
-    // ... existing exports ...
-    updateProduct, // <--- NEW EXPORT
-    deleteProduct, // <--- NEW EXPORT
+/**
+ * Finds a user by their ID.
+ */
+export const findUserById = async (userId) => {
+  const result = await pool.query(
+    "SELECT id, name, email FROM users WHERE id = $1",
+    [userId]
+  );
+  return result.rows[0];
 };

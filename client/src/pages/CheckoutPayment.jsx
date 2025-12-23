@@ -1,162 +1,3 @@
-// // client/src/pages/CheckoutPayment.jsx
-// import React from "react";
-// import { useLocation, useNavigate } from "react-router-dom";
-// import { useCart } from "../context/CartContext";
-// import api from "../services/api";
-// import Header from "../components/Header";
-// import Footer from "../components/Footer";
-
-// /**
-//  * Dynamically load Razorpay script
-//  * This fixes: window.Razorpay is not a constructor
-//  */
-// const loadRazorpayScript = () => {
-//   return new Promise((resolve) => {
-//     if (window.Razorpay) {
-//       resolve(true);
-//       return;
-//     }
-
-//     const script = document.createElement("script");
-//     script.src = "https://checkout.razorpay.com/v1/checkout.js";
-//     script.async = true;
-
-//     script.onload = () => resolve(true);
-//     script.onerror = () => resolve(false);
-
-//     document.body.appendChild(script);
-//   });
-// };
-
-// const CheckoutPayment = () => {
-//   const location = useLocation();
-//   const navigate = useNavigate();
-//   const { cartItems } = useCart();
-//   const state = location.state;
-
-//   // 🚨 Guard: page opened directly
-//   if (!state || !state.total || !state.addressId) {
-//     return (
-//       <>
-//         <Header />
-//         <div className="payment-container">
-//           <p>Invalid payment session. Please start checkout again.</p>
-//         </div>
-//         <Footer />
-//       </>
-//     );
-//   }
-
-//   const pay = async () => {
-//     try {
-//       // 🚨 Guard: cart must exist
-//       if (!Array.isArray(cartItems) || cartItems.length === 0) {
-//         alert("Your cart is empty. Please add items again.");
-//         navigate("/cart");
-//         return;
-//       }
-
-//       // 1️⃣ CREATE ORDER (Backend)
-//       const orderRes = await api.post("/orders", {
-//         items: cartItems.map((item) => ({
-//           productId: item.id,
-//           quantity: item.quantity,
-//           price: item.price,
-//         })),
-//         totalAmount: Number(state.total)*100,  // PAISA
-//         addressId: state.addressId,
-//       });
-
-//       const { orderId } = orderRes.data;
-
-//       if (!orderId) {
-//         throw new Error("Order ID not returned from server");
-//       }
-
-//       // 2️⃣ CREATE PAYMENT ORDER (Backend → Razorpay)
-//       const paymentRes = await api.post("/payment/create", {
-//         amount: Number(state.total),
-//         orderId,
-//       });
-
-//       const paymentData = paymentRes.data;
-
-//       if (!paymentData || !paymentData.id) {
-//         throw new Error("Invalid payment order received");
-//       }
-
-//       // 3️⃣ LOAD RAZORPAY SCRIPT (CRITICAL FIX)
-//       const isLoaded = await loadRazorpayScript();
-
-//       if (!isLoaded || !window.Razorpay) {
-//         alert("Razorpay SDK failed to load. Please try again.");
-//         return;
-//       }
-
-//       // 4️⃣ OPEN RAZORPAY CHECKOUT
-//       const options = {
-//         key: import.meta.env.VITE_RAZORPAY_KEY, // frontend key only
-//         amount: paymentData.amount,
-//         currency: "INR",
-//         name: "Aditya Enterprises",
-//         description: "Construction Material Purchase",
-//         order_id: paymentData.id,
-
-//         handler: async function (response) {
-//           try {
-//             // 5️⃣ VERIFY PAYMENT (Backend)
-//             await api.post("/payment/verify", {
-//               razorpay_payment_id: response.razorpay_payment_id,
-//               razorpay_order_id: response.razorpay_order_id,
-//               razorpay_signature: response.razorpay_signature,
-//               orderId,
-//             });
-
-//             // 6️⃣ SUCCESS → CONFIRMATION PAGE
-//             navigate("/order-confirmation", {
-//               state: {
-//                 orderId,
-//                 totalAmount: state.total,
-//               },
-//             });
-//           } catch (err) {
-//             console.error("Payment verification failed:", err);
-//             alert("Payment verification failed. Please contact support.");
-//           }
-//         },
-
-//         theme: {
-//           color: "#0a2540",
-//         },
-//       };
-
-//       const razorpay = new window.Razorpay(options);
-//       razorpay.open();
-//     } catch (err) {
-//       console.error("Payment failed:", err);
-//       alert("Payment failed. Please try again.");
-//     }
-//   };
-
-//   return (
-//     <>
-//       <Header />
-//       <div className="payment-container">
-//         <h2>Checkout Payment</h2>
-//         <p>Total Payable: ₹{state.total}</p>
-
-//         <button className="checkout-button" onClick={pay}>
-//           Pay Now
-//         </button>
-//       </div>
-//       <Footer />
-//     </>
-//   );
-// };
-
-// export default CheckoutPayment;
-
-// client/src/pages/CheckoutPayment.jsx
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
@@ -164,9 +5,9 @@ import api from "../services/api";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-// Load Razorpay safely
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
+/* Load Razorpay safely */
+const loadRazorpayScript = () =>
+  new Promise((resolve) => {
     if (window.Razorpay) return resolve(true);
 
     const script = document.createElement("script");
@@ -175,64 +16,66 @@ const loadRazorpayScript = () => {
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
-};
 
 const CheckoutPayment = () => {
-  const { cartItems } = useCart();
+  const { cartItems, clearCart } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state;
 
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
+  const [loading, setLoading] = useState(false);
 
-  // Guard
+  // Guard: prevent direct access
   if (!state || !state.total || !state.addressId) {
     return (
       <>
         <Header />
         <div className="payment-container">
-          <p>Invalid checkout session. Please try again.</p>
+          <p>Invalid checkout session. Please start again.</p>
         </div>
         <Footer />
       </>
     );
   }
 
-  const placeCODOrder = async () => {
-    const res = await api.post("/orders/place", {
+  /* COMMON ORDER CREATION */
+  const createOrder = async (method) => {
+    const res = await api.post("/orders", {
       items: cartItems.map((item) => ({
         productId: item.id,
         quantity: item.quantity,
         price: item.price,
       })),
-      totalAmount: state.total,
+      totalAmount: Number(state.total), // ✅ RUPEES ONLY
       addressId: state.addressId,
-      paymentMethod: "cod",
+      paymentMethod: method,
     });
 
+    return res.data.orderId;
+  };
+
+  /* COD FLOW */
+  const handleCOD = async () => {
+    const orderId = await createOrder("cod");
+
+    clearCart();
     navigate("/order-confirmation", {
       state: {
-        orderId: res.data.orderId,
+        orderId,
         paymentMethod: "cod",
         totalAmount: state.total,
       },
     });
   };
 
-  const payOnline = async () => {
-    const orderRes = await api.post("/orders", {
-      items: cartItems.map((item) => ({
-        productId: item.id,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      totalAmount: state.total,
-      addressId: state.addressId,
-    });
+  /* RAZORPAY FLOW */
+  const handleRazorpay = async () => {
+    const orderId = await createOrder("razorpay");
 
-    const paymentRes = await api.post("/payment/create", {
-      amount: state.total * 100, // paise
-      orderId: orderRes.data.orderId,
+    const razorpayOrder = await api.post("/payment/create", {
+      amount: Number(state.total) * 100, // ✅ PAISE
+      orderId,
     });
 
     const loaded = await loadRazorpayScript();
@@ -243,27 +86,30 @@ const CheckoutPayment = () => {
 
     const options = {
       key: import.meta.env.VITE_RAZORPAY_KEY,
-      amount: paymentRes.data.amount,
+      amount: razorpayOrder.data.amount,
       currency: "INR",
       name: "Aditya Enterprises",
       description: "Order Payment",
-      order_id: paymentRes.data.id,
+      order_id: razorpayOrder.data.id,
+
       handler: async (response) => {
         await api.post("/payment/verify", {
           razorpay_payment_id: response.razorpay_payment_id,
           razorpay_order_id: response.razorpay_order_id,
           razorpay_signature: response.razorpay_signature,
-          orderId: orderRes.data.orderId,
+          orderId,
         });
 
+        clearCart();
         navigate("/order-confirmation", {
           state: {
-            orderId: orderRes.data.orderId,
+            orderId,
             paymentMethod: "razorpay",
             totalAmount: state.total,
           },
         });
       },
+
       theme: { color: "#0a2540" },
     };
 
@@ -271,16 +117,19 @@ const CheckoutPayment = () => {
   };
 
   const handlePay = async () => {
-    if (cartItems.length === 0) {
+    if (!cartItems.length) {
       alert("Cart is empty");
       return;
     }
 
     try {
-      paymentMethod === "cod" ? await placeCODOrder() : await payOnline();
+      setLoading(true);
+      paymentMethod === "cod" ? await handleCOD() : await handleRazorpay();
     } catch (err) {
       console.error(err);
-      alert("Payment failed");
+      alert("Payment failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -295,7 +144,6 @@ const CheckoutPayment = () => {
           <label>
             <input
               type="radio"
-              value="razorpay"
               checked={paymentMethod === "razorpay"}
               onChange={() => setPaymentMethod("razorpay")}
             />
@@ -305,7 +153,6 @@ const CheckoutPayment = () => {
           <label>
             <input
               type="radio"
-              value="cod"
               checked={paymentMethod === "cod"}
               onChange={() => setPaymentMethod("cod")}
             />
@@ -313,8 +160,12 @@ const CheckoutPayment = () => {
           </label>
         </div>
 
-        <button className="checkout-button" onClick={handlePay}>
-          Place Order
+        <button
+          className="checkout-button"
+          onClick={handlePay}
+          disabled={loading}
+        >
+          {loading ? "Processing..." : "Place Order"}
         </button>
       </div>
       <Footer />
@@ -323,4 +174,3 @@ const CheckoutPayment = () => {
 };
 
 export default CheckoutPayment;
-

@@ -2347,3 +2347,200 @@ body[data-theme="dark"] .search-input-field {
 .clear-filter-btn.active {
     background-color: #e67e22; /* Warning orange if you want it to stand out */
 }
+
+/* ================================
+   PAGE CONTAINER
+================================ */
+.page-container {
+  min-height: 100vh;
+  background: radial-gradient(
+      circle at top,
+      #0b1636,
+      #050b1c 70%
+  );
+  padding: 40px 16px;
+}
+
+/* ================================
+   CARD (ADDRESS & PAYMENT)
+================================ */
+.checkout-card {
+  max-width: 720px;
+  margin: auto;
+  background: linear-gradient(
+      145deg,
+      var(--bg-card),
+      var(--bg-card-light)
+  );
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px var(--border-soft);
+}
+
+/* ================================
+   HEADINGS
+================================ */
+.checkout-card h2 {
+  color: var(--text-main);
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.checkout-card p {
+  color: var(--text-muted);
+  font-size: 15px;
+  margin-bottom: 24px;
+}
+
+/* ================================
+   FORM GRID (ADDRESS)
+================================ */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.form-grid textarea {
+  grid-column: span 2;
+  resize: none;
+  min-height: 100px;
+}
+
+/* ================================
+   INPUTS
+================================ */
+.checkout-card input,
+.checkout-card textarea {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text-main);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.checkout-card input::placeholder,
+.checkout-card textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.checkout-card input:focus,
+.checkout-card textarea:focus {
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 2px rgba(79, 163, 255, 0.25);
+}
+
+/* ================================
+   PAYMENT METHODS
+================================ */
+.payment-methods {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.payment-methods label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border-soft);
+  color: var(--text-main);
+  transition: all 0.25s ease;
+}
+
+.payment-methods input {
+  accent-color: var(--primary);
+}
+
+.payment-methods label:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary);
+}
+
+/* ================================
+   TOTAL DISPLAY
+================================ */
+.total-box {
+  background: rgba(79, 163, 255, 0.08);
+  border: 1px dashed var(--primary);
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  color: var(--text-main);
+  font-size: 18px;
+  text-align: center;
+}
+
+/* ================================
+   BUTTON
+================================ */
+.checkout-button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #ffffff;
+  background: linear-gradient(
+      135deg,
+      var(--primary),
+      var(--primary-dark)
+  );
+  box-shadow: 0 10px 30px rgba(28, 79, 216, 0.5);
+  transition: all 0.3s ease;
+}
+
+.checkout-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px rgba(28, 79, 216, 0.7);
+}
+
+.checkout-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ================================
+   ORDER CONFIRMATION
+================================ */
+.order-success {
+  text-align: center;
+  padding: 40px;
+}
+
+.order-success h2 {
+  color: var(--success);
+  font-size: 30px;
+  margin-bottom: 12px;
+}
+
+.order-success p {
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-methods {
+    flex-direction: column;
+  }
+}

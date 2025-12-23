@@ -5,11 +5,10 @@ import api from "../services/api";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-/* Load Razorpay safely */
+/* Load Razorpay */
 const loadRazorpayScript = () =>
   new Promise((resolve) => {
     if (window.Razorpay) return resolve(true);
-
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.onload = () => resolve(true);
@@ -26,72 +25,69 @@ const CheckoutPayment = () => {
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [loading, setLoading] = useState(false);
 
-  // Guard: prevent direct access
   if (!state || !state.total || !state.addressId) {
     return (
       <>
         <Header />
-        <div className="payment-container">
-          <p>Invalid checkout session. Please start again.</p>
+        <div className="page-container">
+          <div className="checkout-card">
+            <p>Invalid checkout session</p>
+          </div>
         </div>
         <Footer />
       </>
     );
   }
 
-  /* COMMON ORDER CREATION */
   const createOrder = async (method) => {
-    const res = await api.post("/orders", {
-      items: cartItems.map((item) => ({
-        productId: item.id,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      totalAmount: Number(state.total), // ✅ RUPEES ONLY
-      addressId: state.addressId,
-      paymentMethod: method,
-    });
+    const res = await api.post(
+      "/orders/place",
+      {
+        items: cartItems.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        totalAmount: Number(state.total),
+        addressId: state.addressId,
+        paymentMethod: method,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
 
     return res.data.orderId;
   };
 
-  /* COD FLOW */
   const handleCOD = async () => {
     const orderId = await createOrder("cod");
-
     clearCart();
     navigate("/order-confirmation", {
-      state: {
-        orderId,
-        paymentMethod: "cod",
-        totalAmount: state.total,
-      },
+      state: { orderId, paymentMethod: "cod", totalAmount: state.total },
     });
   };
 
-  /* RAZORPAY FLOW */
   const handleRazorpay = async () => {
     const orderId = await createOrder("razorpay");
 
-    const razorpayOrder = await api.post("/payment/create", {
-      amount: Number(state.total) * 100, // ✅ PAISE
+    const rpOrder = await api.post("/payment/create", {
+      amount: state.total * 100,
       orderId,
     });
 
     const loaded = await loadRazorpayScript();
-    if (!loaded) {
-      alert("Razorpay failed to load");
-      return;
-    }
+    if (!loaded) return alert("Razorpay failed to load");
 
-    const options = {
+    new window.Razorpay({
       key: import.meta.env.VITE_RAZORPAY_KEY,
-      amount: razorpayOrder.data.amount,
+      amount: rpOrder.data.amount,
       currency: "INR",
       name: "Aditya Enterprises",
-      description: "Order Payment",
-      order_id: razorpayOrder.data.id,
-
+      description: "Construction Order Payment",
+      order_id: rpOrder.data.id,
       handler: async (response) => {
         await api.post("/payment/verify", {
           razorpay_payment_id: response.razorpay_payment_id,
@@ -109,25 +105,17 @@ const CheckoutPayment = () => {
           },
         });
       },
-
-      theme: { color: "#0a2540" },
-    };
-
-    new window.Razorpay(options).open();
+      theme: { color: "#1c4fd8" },
+    }).open();
   };
 
   const handlePay = async () => {
-    if (!cartItems.length) {
-      alert("Cart is empty");
-      return;
-    }
-
+    if (!cartItems.length) return alert("Cart empty");
     try {
       setLoading(true);
       paymentMethod === "cod" ? await handleCOD() : await handleRazorpay();
-    } catch (err) {
-      console.error(err);
-      alert("Payment failed. Please try again.");
+    } catch {
+      alert("Payment failed");
     } finally {
       setLoading(false);
     }
@@ -136,38 +124,45 @@ const CheckoutPayment = () => {
   return (
     <>
       <Header />
-      <div className="payment-container">
-        <h2>Checkout Payment</h2>
-        <p>Total Payable: ₹{state.total}</p>
 
-        <div className="payment-methods">
-          <label>
-            <input
-              type="radio"
-              checked={paymentMethod === "razorpay"}
-              onChange={() => setPaymentMethod("razorpay")}
-            />
-            Pay Online (Razorpay)
-          </label>
+      <div className="page-container">
+        <div className="checkout-card">
+          <h2>Checkout Payment</h2>
 
-          <label>
-            <input
-              type="radio"
-              checked={paymentMethod === "cod"}
-              onChange={() => setPaymentMethod("cod")}
-            />
-            Cash on Delivery
-          </label>
+          <div className="total-box">
+            Total Payable: ₹{state.total}
+          </div>
+
+          <div className="payment-methods">
+            <label>
+              <input
+                type="radio"
+                checked={paymentMethod === "razorpay"}
+                onChange={() => setPaymentMethod("razorpay")}
+              />
+              Pay Online (Razorpay)
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                checked={paymentMethod === "cod"}
+                onChange={() => setPaymentMethod("cod")}
+              />
+              Cash on Delivery
+            </label>
+          </div>
+
+          <button
+            className="checkout-button"
+            onClick={handlePay}
+            disabled={loading}
+          >
+            {loading ? "Processing..." : "Place Order"}
+          </button>
         </div>
-
-        <button
-          className="checkout-button"
-          onClick={handlePay}
-          disabled={loading}
-        >
-          {loading ? "Processing..." : "Place Order"}
-        </button>
       </div>
+
       <Footer />
     </>
   );

@@ -9,6 +9,7 @@
 
 // export default router;
 
+// server/routes/orderRoutes.js
 import express from "express";
 import { placeOrder } from "../controllers/orderController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -16,9 +17,9 @@ import { protect } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 /**
- * Create Order (COD or Razorpay)
- * POST /api/orders
+ * Place Order (COD or Razorpay initial order)
+ * POST /api/orders/place
  */
-router.post("/", protect, placeOrder);
+router.post("/place", protect, placeOrder);
 
 export default router;

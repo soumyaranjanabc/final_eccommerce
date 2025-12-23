@@ -1,14 +1,13 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { checkout } from "../controllers/orderController.js";
+import checkout from "../controllers/orderController.js"; // ✅ DEFAULT IMPORT
 
 const router = express.Router();
 
 /**
  * Base path: /api/orders
+ * POST /api/orders
  */
-
-// CREATE ORDER (COD + Razorpay)
 router.post("/", authMiddleware, checkout);
 
 export default router;

@@ -4,18 +4,19 @@ import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
-import CategoryNav from '../components/CategoryNav'; 
+import CategoryNav from '../components/CategoryNav';
 
 const HomePage = () => {
-    const [allProducts, setAllProducts] = useState([]);      
+    // --- STATE ---
+    const [allProducts, setAllProducts] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState([]);
+    const [categories, setCategories] = useState([]); // ✅ Added for hierarchy logic
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
-    const [searchTerm, setSearchTerm] = useState(''); 
+    const [searchTerm, setSearchTerm] = useState('');
     const [priceRange, setPriceRange] = useState([0, 100000]);
 
-    // STOCK FILTER STATE
     const [stockFilter, setStockFilter] = useState({
         inStock: true,
         outOfStock: false,
@@ -23,37 +24,57 @@ const HomePage = () => {
         bulkStock: false,
     });
 
-    // Fetch all products
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const response = await axios.get(
-                    `${import.meta.env.VITE_API_BASE_URL}/api/products`
-                );
+    // --- HELPER FUNCTION ---
+    // Recursively finds all IDs of a category and its subcategories
+    const getAllCategoryIds = (parentId, categoryList) => {
+        let ids = [parentId];
+        categoryList.forEach(cat => {
+            // Use == for loose equality in case one is a string and other is a number
+            if (cat.parent_id == parentId) {
+                ids = ids.concat(getAllCategoryIds(cat.id, categoryList));
+            }
+        });
+        return ids;
+    };
 
-                setAllProducts(response.data);
+    // --- DATA FETCHING ---
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Fetch Products and Categories in parallel
+                const [prodRes, catRes] = await Promise.all([
+                    axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/products`),
+                    axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/categories`)
+                ]);
+
+                setAllProducts(prodRes.data);
+                setCategories(catRes.data);
                 setLoading(false);
             } catch (err) {
-                setError('Failed to fetch products. Please check the backend connection.');
+                console.error("Fetch Error:", err);
+                setError('Failed to fetch data. Please check the backend connection.');
                 setLoading(false);
             }
         };
-        fetchProducts();
+        fetchData();
     }, []);
 
-    // MAIN FILTERING LOGIC
+    // --- MAIN FILTERING LOGIC ---
     useEffect(() => {
-        let currentProducts = allProducts;
-        
-        // 1. Category Filter
-        if (selectedCategoryId !== null) {
-            currentProducts = currentProducts.filter(p => p.category_id == selectedCategoryId);
+        let currentProducts = [...allProducts];
+
+        // 1. Category Filter (Parent + Children)
+        if (selectedCategoryId !== null && categories.length > 0) {
+            const validCategoryIds = getAllCategoryIds(Number(selectedCategoryId), categories);
+            currentProducts = currentProducts.filter(p =>
+                validCategoryIds.includes(Number(p.category_id))
+            );
         }
 
         // 2. Search Filter
         if (searchTerm.trim() !== '') {
             const lowerCaseSearch = searchTerm.toLowerCase().trim();
-            currentProducts = currentProducts.filter(p => 
+            currentProducts = currentProducts.filter(p =>
                 p.name.toLowerCase().includes(lowerCaseSearch) ||
                 p.description.toLowerCase().includes(lowerCaseSearch)
             );
@@ -67,18 +88,15 @@ const HomePage = () => {
         // 4. Stock-based filtering
         currentProducts = currentProducts.filter((p) => {
             const qty = p.stock_quantity;
-
             if (stockFilter.inStock && qty <= 0) return false;
             if (stockFilter.outOfStock && qty > 0) return false;
-
             if (stockFilter.lowStock && qty >= 50) return false;
             if (stockFilter.bulkStock && qty < 500) return false;
-
             return true;
         });
 
         setFilteredProducts(currentProducts);
-    }, [selectedCategoryId, searchTerm, priceRange, stockFilter, allProducts]);
+    }, [selectedCategoryId, searchTerm, priceRange, stockFilter, allProducts, categories]);
 
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
@@ -87,7 +105,7 @@ const HomePage = () => {
     if (loading) return (
         <>
             <Header />
-            <p className="loading" style={{textAlign: 'center', marginTop: '20px'}}>Loading products...</p>
+            <p className="loading" style={{ textAlign: 'center', marginTop: '40px' }}>Loading products...</p>
             <Footer />
         </>
     );
@@ -95,7 +113,10 @@ const HomePage = () => {
     if (error) return (
         <>
             <Header />
-            <p className="error-message" style={{maxWidth: '600px', margin: '20px auto'}}>{error}</p>
+            <div style={{ textAlign: 'center', margin: '40px' }}>
+                <p className="error-message">{error}</p>
+                <button onClick={() => window.location.reload()}>Retry</button>
+            </div>
             <Footer />
         </>
     );
@@ -103,7 +124,7 @@ const HomePage = () => {
     return (
         <>
             <Header />
-            
+
             <section className="hero-banner">
                 <div className="hero-content">
                     <h1>Build Strong. Build Smart.</h1>
@@ -112,11 +133,11 @@ const HomePage = () => {
                 </div>
             </section>
 
-            <div className="homepage-main-layout"> 
+            <div className="homepage-main-layout">
                 <aside className="sidebar">
+                    {/* Ensure CategoryNav uses setSelectedCategoryId correctly */}
                     <CategoryNav onCategorySelect={setSelectedCategoryId} />
 
-                    {/* PRICE FILTER */}
                     <div className="price-range-block">
                         <h4>Price Range (₹)</h4>
                         <input
@@ -132,7 +153,6 @@ const HomePage = () => {
                         </div>
                     </div>
 
-                    {/* STOCK FILTER UI */}
                     <div className="stock-filter">
                         <h4>Availability</h4>
                         <label>
@@ -173,7 +193,7 @@ const HomePage = () => {
                         </label>
                     </div>
                 </aside>
-                
+
                 <main className="product-display">
                     <div className="product-search-area">
                         <input
@@ -181,16 +201,16 @@ const HomePage = () => {
                             placeholder="Search by name or description..."
                             value={searchTerm}
                             onChange={handleSearchChange}
-                            className="search-input-field" 
+                            className="search-input-field"
                         />
                     </div>
-                    
+
                     <div className="product-grid">
                         {filteredProducts.map((product) => (
                             <ProductCard key={product.id} product={product} />
                         ))}
                         {filteredProducts.length === 0 && (
-                            <p style={{ marginTop: '20px', color: 'var(--text-muted)' }}>
+                            <p style={{ marginTop: '20px', color: '#666' }}>
                                 No products found matching your criteria.
                             </p>
                         )}

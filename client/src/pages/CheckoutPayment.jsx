@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import api from "../api/axios";
+import api from "../services/api.js";
+
 
 export default function CheckoutPayment() {
   const { state } = useLocation();

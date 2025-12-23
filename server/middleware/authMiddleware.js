@@ -1,22 +1,58 @@
 // server/middleware/authMiddleware.js
+// import jwt from "jsonwebtoken";
+
+// const authMiddleware = (req, res, next) => {
+//   const authHeader = req.headers.authorization;
+
+//   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+//     return res.status(401).json({ error: "Not authorized" });
+//   }
+
+//   const token = authHeader.split(" ")[1];
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     req.user = { id: decoded.id };
+//     next();
+//   } catch (err) {
+//     return res.status(401).json({ error: "Invalid token" });
+//   }
+// };
+
+// export default authMiddleware;
 import jwt from "jsonwebtoken";
+import pool from "../config/db.js";
 
-const authMiddleware = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Not authorized" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
+export const protect = async (req, res, next) => {
   try {
+    let token;
+
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: "Not authorized, token missing" });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: decoded.id };
+
+    const userRes = await pool.query(
+      "SELECT id, email FROM users WHERE id = $1",
+      [decoded.id]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    req.user = userRes.rows[0];
     next();
   } catch (err) {
-    return res.status(401).json({ error: "Invalid token" });
+    console.error("Auth error:", err.message);
+    res.status(401).json({ error: "Not authorized" });
   }
 };
-
-export default authMiddleware;

@@ -2313,3 +2313,37 @@ body[data-theme="dark"] .search-input-field {
 .auth-link:hover {
     text-decoration: underline;
 }
+/* Sidebar Reset Button Styling */
+.clear-filter-btn {
+    display: block;
+    width: 100%;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    background-color: #2c3e50; /* Dark slate to match construction theme */
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.clear-filter-btn:hover {
+    background-color: #34495e;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+}
+
+.clear-filter-btn:active {
+    background-color: #1a252f;
+    transform: translateY(0);
+}
+
+/* Optional: Style for when no category is selected (Active State) */
+.clear-filter-btn.active {
+    background-color: #e67e22; /* Warning orange if you want it to stand out */
+}

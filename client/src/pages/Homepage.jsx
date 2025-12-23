@@ -250,12 +250,11 @@ const HomePage = () => {
         bulkStock: false,
     });
 
-    // --- HELPER FUNCTION ---
-    // This finds the ID of the selected category AND all its sub-category IDs
+    // --- HELPER FUNCTION: RECURSIVE CATEGORY LOOKUP ---
+    // Finds the clicked ID + all its child sub-category IDs
     const getAllCategoryIds = (parentId, categoryList) => {
         let ids = [Number(parentId)];
         categoryList.forEach(cat => {
-            // Check if this category's parent matches the one we clicked
             if (cat.parent_id && Number(cat.parent_id) === Number(parentId)) {
                 ids = ids.concat(getAllCategoryIds(cat.id, categoryList));
             }
@@ -267,7 +266,7 @@ const HomePage = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch products and categories in parallel for efficiency
+                // Fetch products and categories in parallel
                 const [prodRes, catRes] = await Promise.all([
                     axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/products`),
                     axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/categories`)
@@ -278,33 +277,40 @@ const HomePage = () => {
                 setLoading(false);
             } catch (err) {
                 console.error("Fetch Error:", err);
-                setError('Failed to fetch data from the server.');
+                setError('Failed to fetch data from server.');
                 setLoading(false);
             }
         };
         fetchData();
     }, []);
 
-    // --- MAIN FILTERING LOGIC ---
+    // --- MAIN FILTERING ENGINE ---
     useEffect(() => {
+        if (allProducts.length === 0 && !loading) return;
+
         let currentProducts = [...allProducts];
         
         // 1. Category Hierarchy Filter
         if (selectedCategoryId !== null && categories.length > 0) {
-            const validCategoryIds = getAllCategoryIds(selectedCategoryId, categories);
+            const clickedId = Number(selectedCategoryId);
+            const validCategoryIds = getAllCategoryIds(clickedId, categories);
             
-            currentProducts = currentProducts.filter(p => 
-                // Convert to Number to ensure "1" matches 1
-                validCategoryIds.includes(Number(p.category_id))
-            );
+            // DEBUG: Open browser console (F12) to see this!
+            console.log("Selected ID:", clickedId);
+            console.log("Valid Tree IDs:", validCategoryIds);
+
+            currentProducts = currentProducts.filter(p => {
+                const productCatId = Number(p.category_id);
+                return validCategoryIds.includes(productCatId);
+            });
         }
 
-        // 2. Search Filter (Name or Description)
+        // 2. Search Filter
         if (searchTerm.trim() !== '') {
             const lowerCaseSearch = searchTerm.toLowerCase().trim();
             currentProducts = currentProducts.filter(p => 
                 p.name.toLowerCase().includes(lowerCaseSearch) ||
-                p.description.toLowerCase().includes(lowerCaseSearch)
+                (p.description && p.description.toLowerCase().includes(lowerCaseSearch))
             );
         }
 
@@ -313,24 +319,22 @@ const HomePage = () => {
             p => Number(p.price) >= priceRange[0] && Number(p.price) <= priceRange[1]
         );
 
-        // 4. Stock-based filtering
+        // 4. Stock Filter
         currentProducts = currentProducts.filter((p) => {
             const qty = Number(p.stock_quantity);
             if (stockFilter.inStock && qty <= 0) return false;
             if (stockFilter.outOfStock && qty > 0) return false;
-            if (stockFilter.lowStock && qty >= 50) return false;
-            if (stockFilter.bulkStock && qty < 500) return false;
             return true;
         });
 
         setFilteredProducts(currentProducts);
-        // Runs whenever any filter or data changes
-    }, [selectedCategoryId, searchTerm, priceRange, stockFilter, allProducts, categories]);
+        // Dependency array ensures UI updates on any change
+    }, [selectedCategoryId, searchTerm, priceRange, stockFilter, allProducts, categories, loading]);
 
     if (loading) return (
         <>
             <Header />
-            <p style={{textAlign: 'center', marginTop: '40px'}}>Loading your materials...</p>
+            <p style={{textAlign: 'center', marginTop: '40px'}}>Loading products...</p>
             <Footer />
         </>
     );
@@ -343,23 +347,23 @@ const HomePage = () => {
                 <div className="hero-content">
                     <h1>Build Strong. Build Smart.</h1>
                     <p>Premium construction materials for modern projects</p>
-                    <button className="hero-btn">Explore Materials</button>
                 </div>
             </section>
 
             <div className="homepage-main-layout"> 
                 <aside className="sidebar">
-                    {/* Reset Button to clear current category selection */}
+                    {/* RESET BUTTON: Essential for clearing filters */}
                     <button 
                         onClick={() => setSelectedCategoryId(null)}
                         className="clear-filter-btn"
+                        style={{ width: '100%', marginBottom: '20px', cursor: 'pointer' }}
                     >
-                        Show All Categories
+                        SHOW ALL PRODUCTS
                     </button>
 
                     <CategoryNav onCategorySelect={setSelectedCategoryId} />
 
-                    <div className="price-range-block">
+                    <div className="price-range-block" style={{marginTop: '20px'}}>
                         <h4>Price Range (₹)</h4>
                         <input
                             type="range"
@@ -372,26 +376,6 @@ const HomePage = () => {
                         <div className="price-values">
                             ₹0 – ₹{priceRange[1].toLocaleString()}
                         </div>
-                    </div>
-
-                    <div className="stock-filter">
-                        <h4>Availability</h4>
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={stockFilter.inStock}
-                                onChange={() => setStockFilter({ ...stockFilter, inStock: !stockFilter.inStock })}
-                            />
-                            In Stock
-                        </label>
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={stockFilter.outOfStock}
-                                onChange={() => setStockFilter({ ...stockFilter, outOfStock: !stockFilter.outOfStock })}
-                            />
-                            Out of Stock
-                        </label>
                     </div>
                 </aside>
                 
@@ -411,12 +395,9 @@ const HomePage = () => {
                             <ProductCard key={product.id} product={product} />
                         ))}
                         {filteredProducts.length === 0 && (
-                            <div className="no-results">
-                                <p>No products found matching your current filters.</p>
-                                <button onClick={() => {
-                                    setSelectedCategoryId(null);
-                                    setSearchTerm('');
-                                }}>Reset All Filters</button>
+                            <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                                <p>No products found for this category.</p>
+                                <button onClick={() => setSelectedCategoryId(null)}>Clear Filter</button>
                             </div>
                         )}
                     </div>

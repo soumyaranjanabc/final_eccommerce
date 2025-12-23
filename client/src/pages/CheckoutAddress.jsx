@@ -19,16 +19,44 @@ export default function CheckoutAddress() {
 
   const submit = async () => {
     try {
-      const address = await api.post("/addresses", form);
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        alert("Session expired. Please login again.");
+        navigate("/login");
+        return;
+      }
+
+      // Basic validation
+      for (const key in form) {
+        if (!form[key]) {
+          alert("Please fill all address fields");
+          return;
+        }
+      }
+
+      const res = await api.post("/addresses", form, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       navigate("/checkout/payment", {
         state: {
-          addressId: address.data.id,
-          total: state.total,
+          addressId: res.data.id,
+          total: state?.total,
         },
       });
     } catch (err) {
-      alert("Failed to save address");
+      console.error("Address save failed:", err?.response?.data || err.message);
+
+      if (err.response?.status === 401) {
+        alert("Session expired. Please login again.");
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        alert("Failed to save address");
+      }
     }
   };
 
@@ -44,36 +72,42 @@ export default function CheckoutAddress() {
           <div className="form-grid">
             <input
               placeholder="Full Name"
+              value={form.full_name}
               onChange={(e) =>
                 setForm({ ...form, full_name: e.target.value })
               }
             />
             <input
               placeholder="Phone Number"
+              value={form.phone}
               onChange={(e) =>
                 setForm({ ...form, phone: e.target.value })
               }
             />
             <textarea
               placeholder="Complete Address"
+              value={form.address_line}
               onChange={(e) =>
                 setForm({ ...form, address_line: e.target.value })
               }
             />
             <input
               placeholder="City"
+              value={form.city}
               onChange={(e) =>
                 setForm({ ...form, city: e.target.value })
               }
             />
             <input
               placeholder="State"
+              value={form.state}
               onChange={(e) =>
                 setForm({ ...form, state: e.target.value })
               }
             />
             <input
               placeholder="Pincode"
+              value={form.pincode}
               onChange={(e) =>
                 setForm({ ...form, pincode: e.target.value })
               }

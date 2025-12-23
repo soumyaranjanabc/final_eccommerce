@@ -1,152 +1,55 @@
 // server/controllers/orderController.js
-// import pool from "../config/db.js";
-// import { sendOrderConfirmation } from "./emailController.js";
 
-// /**
-//  * PLACE ORDER
-//  * POST /api/orders
-//  */
-// export const placeOrder = async (req, res) => {
-//   const { items, totalAmount, addressId, paymentMethod } = req.body;
-//   const userId = req.user.id;
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 
-//   if (!items || items.length === 0) {
-//     return res.status(400).json({ error: "Cart is empty" });
-//   }
+// ✅ Import CommonJS models safely
+const Order = require("../models/orderModel.js");
+const User = require("../models/userModel.js");
 
-//   const client = await pool.connect();
+import { sendOrderConfirmation } from "../utils/sendOrderConfirmation.js";
 
-//   try {
-//     await client.query("BEGIN");
-
-//     // 1️⃣ Create Order
-//     const orderResult = await client.query(
-//       `
-//       INSERT INTO orders (
-//         user_id,
-//         total_amount,
-//         status,
-//         address_id,
-//         payment_method,
-//         payment_status
-//       )
-//       VALUES ($1, $2, $3, $4, $5, $6)
-//       RETURNING *
-//       `,
-//       [
-//         userId,
-//         totalAmount,
-//         "PLACED",
-//         addressId,
-//         paymentMethod,
-//         paymentMethod === "razorpay" ? "PAID" : "COD_PENDING",
-//       ]
-//     );
-
-//     const order = orderResult.rows[0];
-
-//     // 2️⃣ Insert Order Items
-//     for (const item of items) {
-//       await client.query(
-//         `
-//         INSERT INTO order_items (
-//           order_id,
-//           product_id,
-//           quantity,
-//           price_at_purchase
-//         )
-//         VALUES ($1, $2, $3, $4)
-//         `,
-//         [order.id, item.productId, item.quantity, item.price]
-//       );
-//     }
-
-//     await client.query("COMMIT");
-
-//     // 3️⃣ Send Email
-//     await sendOrderConfirmation({
-//       order,
-//       items,
-//       paymentMethod,
-//     });
-
-//     // 4️⃣ Response
-//     res.status(201).json({
-//       success: true,
-//       orderId: order.id,
-//       paymentMethod,
-//       paymentStatus: order.payment_status,
-//     });
-//   } catch (error) {
-//     await client.query("ROLLBACK");
-//     console.error("Order placement failed:", error);
-//     res.status(500).json({ error: "Failed to place order" });
-//   } finally {
-//     client.release();
-//   }
-// };
-
-// server/controllers/orderController.js
-import pool from "../config/db.js";
-import { sendOrderConfirmation } from "./emailController.js";
-
-export const placeOrder = async (req, res) => {
-  const { items, totalAmount, addressId, paymentMethod } = req.body;
-  const userId = req.user.id;
-
-  if (!items || items.length === 0) {
-    return res.status(400).json({ error: "Cart is empty" });
-  }
-
-  const client = await pool.connect();
-
+export const placeOrder = async (req, res, next) => {
   try {
-    await client.query("BEGIN");
+    const userId = req.user.id;
+    const { items, addressId, paymentMethod, totalAmount } = req.body;
 
-    const orderResult = await client.query(
-      `
-      INSERT INTO orders 
-      (user_id, total_amount, status, payment_method, payment_status, address_id)
-      VALUES ($1, $2, 'PLACED', $3, $4, $5)
-      RETURNING *
-      `,
-      [
-        userId,
-        totalAmount,
-        paymentMethod,
-        paymentMethod === "razorpay" ? "paid" : "cod_pending",
-        addressId,
-      ]
-    );
-
-    const order = orderResult.rows[0];
-
-    for (const item of items) {
-      await client.query(
-        `
-        INSERT INTO order_items 
-        (order_id, product_id, quantity, price_at_purchase)
-        VALUES ($1, $2, $3, $4)
-        `,
-        [order.id, item.productId, item.quantity, item.price]
-      );
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: "No items in order" });
     }
 
-    await client.query("COMMIT");
-
-    // Email should NEVER break payment
-    try {
-      await sendOrderConfirmation({ order, items });
-    } catch (emailErr) {
-      console.error("Email failed:", emailErr.message);
+    // 1️⃣ Fetch user email
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    res.status(201).json({ orderId: order.id });
-  } catch (err) {
-    await client.query("ROLLBACK");
-    console.error(err);
-    res.status(500).json({ error: "Order placement failed" });
-  } finally {
-    client.release();
+    // 2️⃣ Create order
+    const order = await Order.create({
+      user_id: userId,
+      address_id: addressId,
+      total_amount: totalAmount,
+      payment_method: paymentMethod,
+      status: "PLACED",
+    });
+
+    // 3️⃣ Send confirmation email ✅
+    await sendOrderConfirmation({
+      order: {
+        id: order.id,
+        total_amount: order.total_amount,
+        email: user.email,
+      },
+      items,
+      paymentMethod,
+    });
+
+    res.status(201).json({
+      message: "Order placed successfully",
+      orderId: order.id,
+    });
+  } catch (error) {
+    console.error("❌ Order placement failed:", error);
+    next(error);
   }
 };

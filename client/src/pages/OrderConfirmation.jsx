@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import api from '../api/axios'; // Using your configured axios instance
+import api from "../services/api";
+ // Using your configured axios instance
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 

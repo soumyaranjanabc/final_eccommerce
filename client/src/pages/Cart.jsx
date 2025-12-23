@@ -6,46 +6,37 @@ import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header';
 import Footer from '../components/Footer'; 
 import CartItem from '../components/CartItem';
-import '../App.css'; // CRITICAL: This imports your professional styling
+import '../App.css'; 
 
 const Cart = () => {
-    const { cartItems, getTotal, checkout } = useCart(); 
+    const { cartItems, getTotal } = useCart(); 
     const { user } = useAuth();
-    
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [checkoutError, setCheckoutError] = useState('');
     const navigate = useNavigate();
 
-    // Calculate totals using parseFloat to handle strings from context
+    // Calculate totals
     const subtotal = parseFloat(getTotal()) || 0; 
     const shipping = 50.00; // Fixed shipping cost
     const finalTotal = (subtotal + shipping).toFixed(2);
 
-    const handleCheckout = async () => {
+    /**
+     * UPDATED: handleCheckout
+     * Redirects to the address step and passes order totals via router state.
+     */
+    const handleCheckout = () => {
         if (!user) {
+            // Redirect to login if not authenticated
             navigate('/login');
             return;
         }
 
-        setIsProcessing(true);
-        setCheckoutError('');
-
-        try {
-            // Execute the checkout function to update DB and clear cart
-            const result = await checkout(); 
-
-            if (result) {
-                // Navigate to confirmation with result data in state
-                navigate('/order-confirmation', { state: result }); 
-            } else {
-                setCheckoutError('Order placed but confirmation data was incomplete.');
+        // Move to the next step in the funnel
+        navigate('/checkout/address', {
+            state: {
+                subtotal,
+                shipping,
+                total: finalTotal
             }
-        } catch (err) {
-            const errorMessage = err.response?.data?.error || 'Checkout failed due to a server error.';
-            setCheckoutError(errorMessage);
-        } finally {
-            setIsProcessing(false);
-        }
+        });
     };
 
     // Render empty cart state
@@ -55,7 +46,12 @@ const Cart = () => {
                 <Header />
                 <div className="cart-container">
                     <h2 className="cart-title">Your Shopping Cart</h2>
-                    <p className="empty-cart">Your cart is empty. Time to start building!</p>
+                    <div className="empty-cart-box">
+                        <p className="empty-cart">Your cart is empty. Time to start building!</p>
+                        <button className="shop-now-btn" onClick={() => navigate('/')}>
+                            Continue Shopping
+                        </button>
+                    </div>
                 </div>
                 <Footer /> 
             </>
@@ -67,9 +63,6 @@ const Cart = () => {
             <Header />
             <div className="cart-container">
                 <h2 className="cart-title">Your Shopping Cart ({cartItems.length} items)</h2>
-                
-                {/* Error Banner for Stock or Auth issues */}
-                {checkoutError && <div className="error-message">{checkoutError}</div>}
                 
                 <div className="cart-content">
                     {/* LEFT COLUMN: List of Items */}
@@ -102,16 +95,16 @@ const Cart = () => {
 
                         {!user && (
                             <p className="login-prompt">
-                                Please log in to complete your order.
+                                * Please log in to complete your order.
                             </p>
                         )}
                         
                         <button 
                             className="checkout-button"
                             onClick={handleCheckout}
-                            disabled={isProcessing || !user} 
+                            disabled={cartItems.length === 0}
                         >
-                            {isProcessing ? 'Processing...' : `Proceed to Checkout (₹${finalTotal})`}
+                            Proceed to Address (₹{finalTotal})
                         </button>
                     </div>
                 </div>

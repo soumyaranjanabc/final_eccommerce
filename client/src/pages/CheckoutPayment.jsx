@@ -1,53 +1,53 @@
+// client/src/pages/CheckoutPayment.jsx
+import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../services/api";
 
-
-
-export default function CheckoutPayment() {
-  const { state } = useLocation();
+const CheckoutPayment = () => {
+  const location = useLocation();
   const navigate = useNavigate();
+  const state = location.state;
 
-const pay = async () => {
-  const cart = JSON.parse(localStorage.getItem("cart"));
+  if (!state) {
+    return <p>Invalid payment session</p>;
+  }
 
-  const orderRes = await api.post("/orders", {
-    items: cart.map(item => ({
-      productId: item.id,        // ✅ FIX
-      quantity: item.quantity,   // ✅ FIX
-      price: item.price          // ✅ FIX
-    })),
-    totalAmount: Number(state.total),
-    addressId: state.addressId
-  });
+  const pay = async () => {
+    try {
+      // 1️⃣ Create order
+      const cart = JSON.parse(localStorage.getItem("cart"));
 
-  console.log("Order created:", orderRes.data);
+      const orderRes = await api.post("/orders", {
+        items: cart.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        totalAmount: Number(state.total),
+        addressId: state.addressId
+      });
 
-  // Next step: payment create (Razorpay)
-};
+      // 2️⃣ Create Razorpay payment order
+      const paymentRes = await api.post("/payment/create", {
+        amount: state.total,
+        orderId: orderRes.data.orderId
+      });
 
+      console.log("Payment order:", paymentRes.data);
 
-    const payment = await api.post("/payment/create", {
-      amount: state.total,
-      orderId: orderRes.data.orderId
-    });
-
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY,
-      amount: payment.data.amount,
-      currency: "INR",
-      order_id: payment.data.id,
-      handler: async (res) => {
-        await api.post("/payment/verify", {
-          ...res,
-          orderId: orderRes.data.orderId
-        });
-
-        navigate(`/order-confirmation/${orderRes.data.orderId}`);
-      }
-    };
-
-    new window.Razorpay(options).open();
+      // Razorpay popup will be added next
+    } catch (err) {
+      console.error("Payment failed:", err);
+      alert("Payment failed. Please try again.");
+    }
   };
 
-  return <button onClick={pay}>Pay Now</button>;
-}
+  return (
+    <div className="payment-container">
+      <h2>Checkout Payment</h2>
+      <button onClick={pay}>Pay Now</button>
+    </div>
+  );
+};
+
+export default CheckoutPayment;

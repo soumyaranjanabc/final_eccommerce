@@ -1,0 +1,39 @@
+import { useLocation, useNavigate } from "react-router-dom";
+import api from "../api/axios";
+
+export default function CheckoutPayment() {
+  const { state } = useLocation();
+  const navigate = useNavigate();
+
+  const pay = async () => {
+    const orderRes = await api.post("/orders", {
+      items: JSON.parse(localStorage.getItem("cart")),
+      totalAmount: state.total,
+      addressId: state.addressId
+    });
+
+    const payment = await api.post("/payment/create", {
+      amount: state.total,
+      orderId: orderRes.data.orderId
+    });
+
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY,
+      amount: payment.data.amount,
+      currency: "INR",
+      order_id: payment.data.id,
+      handler: async (res) => {
+        await api.post("/payment/verify", {
+          ...res,
+          orderId: orderRes.data.orderId
+        });
+
+        navigate(`/order-confirmation/${orderRes.data.orderId}`);
+      }
+    };
+
+    new window.Razorpay(options).open();
+  };
+
+  return <button onClick={pay}>Pay Now</button>;
+}

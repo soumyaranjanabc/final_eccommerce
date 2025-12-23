@@ -1,10 +1,12 @@
+// server/routes/cartRoutes.js
 import express from "express";
-import { checkout } from "../controllers/cartController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Checkout route
-router.post("/checkout", protect, checkout);
+// Cart is frontend-managed
+router.get("/", authMiddleware, (req, res) => {
+  res.json({ message: "Cart is frontend-managed" });
+});
 
 export default router;

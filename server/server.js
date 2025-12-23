@@ -1,18 +1,19 @@
 // server/server.js
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
 // ===============================
-// Load environment variables
+// Load Environment Variables FIRST
 // ===============================
 dotenv.config();
 
 // ===============================
-// Initialize Express app
+// Initialize Express App
 // ===============================
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // ===============================
 // Middleware
@@ -23,7 +24,9 @@ app.use(
     credentials: true,
   })
 );
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ===============================
 // Database Connection
@@ -41,10 +44,10 @@ import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
 // ===============================
-// Root Route
+// Health Check / Root
 // ===============================
 app.get("/", (req, res) => {
-  res.send("Construction E-commerce API is running!");
+  res.status(200).send("✅ Construction E-commerce API is running");
 });
 
 // ===============================
@@ -54,20 +57,30 @@ app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/addresses", addressRoutes);
-app.use("/api/orders", orderRoutes);     // ✅ VERY IMPORTANT
-app.use("/api/payment", paymentRoutes);  // Razorpay
+app.use("/api/orders", orderRoutes);      // order + email trigger
+app.use("/api/payment", paymentRoutes);   // razorpay
+
+// ===============================
+// 404 Handler
+// ===============================
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
 
 // ===============================
 // Global Error Handler
 // ===============================
 app.use((err, req, res, next) => {
-  console.error("Unhandled Error:", err);
-  res.status(500).json({ error: "Internal Server Error" });
+  console.error("❌ Unhandled Error:", err);
+  res.status(err.status || 500).json({
+    error: err.message || "Internal Server Error",
+  });
 });
 
 // ===============================
-// Server Start
+// Start Server
 // ===============================
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📧 Email User Loaded: ${process.env.EMAIL_USER}`);
 });

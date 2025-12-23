@@ -6,7 +6,7 @@ export const getProductUnit = (productName = "") => {
   if (name.includes("aac")) return "block";
   if (name.includes("tmt") || name.includes("steel")) return "kg";
   if (name.includes("sand") || name.includes("gravel")) return "ton";
-  if (name.includes("pipe")) return "meter";
+  if (name.includes("pipe")) return "ft";
   if (name.includes("paint")) return "litre";
   if (name.includes("putty")) return "kg";
   if (name.includes("tile")) return "sq.ft";

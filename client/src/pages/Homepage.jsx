@@ -236,7 +236,7 @@ const HomePage = () => {
     // --- STATE ---
     const [allProducts, setAllProducts] = useState([]);      
     const [filteredProducts, setFilteredProducts] = useState([]);
-    const [categories, setCategories] = useState([]); // Necessary for parent-child logic
+    const [categories, setCategories] = useState([]); 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
@@ -251,11 +251,12 @@ const HomePage = () => {
     });
 
     // --- HELPER FUNCTION ---
-    // This finds all sub-category IDs so parent categories show child products
+    // This finds the ID of the selected category AND all its sub-category IDs
     const getAllCategoryIds = (parentId, categoryList) => {
         let ids = [Number(parentId)];
         categoryList.forEach(cat => {
-            if (Number(cat.parent_id) === Number(parentId)) {
+            // Check if this category's parent matches the one we clicked
+            if (cat.parent_id && Number(cat.parent_id) === Number(parentId)) {
                 ids = ids.concat(getAllCategoryIds(cat.id, categoryList));
             }
         });
@@ -266,7 +267,7 @@ const HomePage = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch products and categories simultaneously
+                // Fetch products and categories in parallel for efficiency
                 const [prodRes, catRes] = await Promise.all([
                     axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/products`),
                     axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/categories`)
@@ -276,8 +277,8 @@ const HomePage = () => {
                 setCategories(catRes.data);
                 setLoading(false);
             } catch (err) {
-                console.error("API Error:", err);
-                setError('Failed to fetch products. Please check the backend connection.');
+                console.error("Fetch Error:", err);
+                setError('Failed to fetch data from the server.');
                 setLoading(false);
             }
         };
@@ -288,18 +289,17 @@ const HomePage = () => {
     useEffect(() => {
         let currentProducts = [...allProducts];
         
-        // 1. Category Filter (The Core Fix)
+        // 1. Category Hierarchy Filter
         if (selectedCategoryId !== null && categories.length > 0) {
-            // Get the ID of the selected category AND all its children
             const validCategoryIds = getAllCategoryIds(selectedCategoryId, categories);
             
             currentProducts = currentProducts.filter(p => 
-                // Ensure we compare numbers to numbers to avoid string mismatches
+                // Convert to Number to ensure "1" matches 1
                 validCategoryIds.includes(Number(p.category_id))
             );
         }
 
-        // 2. Search Filter
+        // 2. Search Filter (Name or Description)
         if (searchTerm.trim() !== '') {
             const lowerCaseSearch = searchTerm.toLowerCase().trim();
             currentProducts = currentProducts.filter(p => 
@@ -324,23 +324,13 @@ const HomePage = () => {
         });
 
         setFilteredProducts(currentProducts);
-        // Dependencies must include everything that affects the list
+        // Runs whenever any filter or data changes
     }, [selectedCategoryId, searchTerm, priceRange, stockFilter, allProducts, categories]);
-
-    const handleSearchChange = (e) => setSearchTerm(e.target.value);
 
     if (loading) return (
         <>
             <Header />
-            <p style={{textAlign: 'center', marginTop: '20px'}}>Loading products...</p>
-            <Footer />
-        </>
-    );
-
-    if (error) return (
-        <>
-            <Header />
-            <p className="error-message" style={{maxWidth: '600px', margin: '20px auto'}}>{error}</p>
+            <p style={{textAlign: 'center', marginTop: '40px'}}>Loading your materials...</p>
             <Footer />
         </>
     );
@@ -359,13 +349,12 @@ const HomePage = () => {
 
             <div className="homepage-main-layout"> 
                 <aside className="sidebar">
-                    {/* Reset Button */}
+                    {/* Reset Button to clear current category selection */}
                     <button 
                         onClick={() => setSelectedCategoryId(null)}
                         className="clear-filter-btn"
-                        style={{ width: '100%', marginBottom: '15px', cursor: 'pointer' }}
                     >
-                        Show All Products
+                        Show All Categories
                     </button>
 
                     <CategoryNav onCategorySelect={setSelectedCategoryId} />
@@ -410,9 +399,9 @@ const HomePage = () => {
                     <div className="product-search-area">
                         <input
                             type="text"
-                            placeholder="Search by name or description..."
+                            placeholder="Search materials..."
                             value={searchTerm}
-                            onChange={handleSearchChange}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             className="search-input-field" 
                         />
                     </div>
@@ -422,9 +411,13 @@ const HomePage = () => {
                             <ProductCard key={product.id} product={product} />
                         ))}
                         {filteredProducts.length === 0 && (
-                            <p style={{ marginTop: '20px', color: 'gray' }}>
-                                No products found matching your criteria.
-                            </p>
+                            <div className="no-results">
+                                <p>No products found matching your current filters.</p>
+                                <button onClick={() => {
+                                    setSelectedCategoryId(null);
+                                    setSearchTerm('');
+                                }}>Reset All Filters</button>
+                            </div>
                         )}
                     </div>
                 </main>

@@ -74,7 +74,7 @@ const CheckoutPayment = () => {
     const orderId = await createOrder("razorpay");
 
     const rpOrder = await api.post("/payment/create", {
-      amount: state.total * 100,
+      amount: state.total,
       orderId,
     });
 

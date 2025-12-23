@@ -7,12 +7,24 @@ export default function CheckoutPayment() {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  const pay = async () => {
-    const orderRes = await api.post("/orders", {
-      items: JSON.parse(localStorage.getItem("cart")),
-      totalAmount: state.total,
-      addressId: state.addressId
-    });
+const pay = async () => {
+  const cart = JSON.parse(localStorage.getItem("cart"));
+
+  const orderRes = await api.post("/orders", {
+    items: cart.map(item => ({
+      productId: item.id,        // ✅ FIX
+      quantity: item.quantity,   // ✅ FIX
+      price: item.price          // ✅ FIX
+    })),
+    totalAmount: Number(state.total),
+    addressId: state.addressId
+  });
+
+  console.log("Order created:", orderRes.data);
+
+  // Next step: payment create (Razorpay)
+};
+
 
     const payment = await api.post("/payment/create", {
       amount: state.total,

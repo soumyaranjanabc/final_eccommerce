@@ -6,13 +6,35 @@ import api from "../services/api";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
+/**
+ * Dynamically load Razorpay script
+ * This fixes: window.Razorpay is not a constructor
+ */
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+
+    document.body.appendChild(script);
+  });
+};
+
 const CheckoutPayment = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartItems } = useCart(); // ✅ USE CONTEXT
+  const { cartItems } = useCart();
   const state = location.state;
 
-  // Guard: invalid navigation
+  // 🚨 Guard: page opened directly
   if (!state || !state.total || !state.addressId) {
     return (
       <>
@@ -34,7 +56,7 @@ const CheckoutPayment = () => {
         return;
       }
 
-      // 1️⃣ CREATE ORDER
+      // 1️⃣ CREATE ORDER (Backend)
       const orderRes = await api.post("/orders", {
         items: cartItems.map((item) => ({
           productId: item.id,
@@ -48,29 +70,41 @@ const CheckoutPayment = () => {
       const { orderId } = orderRes.data;
 
       if (!orderId) {
-        throw new Error("Order ID not returned");
+        throw new Error("Order ID not returned from server");
       }
 
-      // 2️⃣ CREATE PAYMENT ORDER
+      // 2️⃣ CREATE PAYMENT ORDER (Backend → Razorpay)
       const paymentRes = await api.post("/payment/create", {
         amount: Number(state.total),
         orderId,
       });
 
-      if (!paymentRes.data || !paymentRes.data.id) {
-        throw new Error("Invalid payment order");
+      const paymentData = paymentRes.data;
+
+      if (!paymentData || !paymentData.id) {
+        throw new Error("Invalid payment order received");
       }
 
-      // 3️⃣ OPEN RAZORPAY
+      // 3️⃣ LOAD RAZORPAY SCRIPT (CRITICAL FIX)
+      const isLoaded = await loadRazorpayScript();
+
+      if (!isLoaded || !window.Razorpay) {
+        alert("Razorpay SDK failed to load. Please try again.");
+        return;
+      }
+
+      // 4️⃣ OPEN RAZORPAY CHECKOUT
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY,
-        amount: paymentRes.data.amount,
+        key: import.meta.env.VITE_RAZORPAY_KEY, // frontend key only
+        amount: paymentData.amount,
         currency: "INR",
         name: "Aditya Enterprises",
         description: "Construction Material Purchase",
-        order_id: paymentRes.data.id,
+        order_id: paymentData.id,
+
         handler: async function (response) {
           try {
+            // 5️⃣ VERIFY PAYMENT (Backend)
             await api.post("/payment/verify", {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id,
@@ -78,22 +112,26 @@ const CheckoutPayment = () => {
               orderId,
             });
 
-            // ✅ Clear cart via context if you have method
-            // clearCart();
-
+            // 6️⃣ SUCCESS → CONFIRMATION PAGE
             navigate("/order-confirmation", {
-              state: { orderId, totalAmount: state.total },
+              state: {
+                orderId,
+                totalAmount: state.total,
+              },
             });
           } catch (err) {
             console.error("Payment verification failed:", err);
-            alert("Payment verification failed.");
+            alert("Payment verification failed. Please contact support.");
           }
         },
-        theme: { color: "#0a2540" },
+
+        theme: {
+          color: "#0a2540",
+        },
       };
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
     } catch (err) {
       console.error("Payment failed:", err);
       alert("Payment failed. Please try again.");

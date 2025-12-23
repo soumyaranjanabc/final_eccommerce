@@ -5,7 +5,7 @@ import api from "../services/api";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-/* Load Razorpay */
+/* Load Razorpay safely */
 const loadRazorpayScript = () =>
   new Promise((resolve) => {
     if (window.Razorpay) return resolve(true);
@@ -18,14 +18,13 @@ const loadRazorpayScript = () =>
 
 const CheckoutPayment = () => {
   const { cartItems, clearCart } = useCart();
-  const location = useLocation();
+  const { state } = useLocation();
   const navigate = useNavigate();
-  const state = location.state;
 
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [loading, setLoading] = useState(false);
 
-  if (!state || !state.total || !state.addressId) {
+  if (!state?.total || !state?.addressId) {
     return (
       <>
         <Header />
@@ -39,7 +38,11 @@ const CheckoutPayment = () => {
     );
   }
 
+  const token = localStorage.getItem("token");
+
   const createOrder = async (method) => {
+    if (!token) throw new Error("AUTH_MISSING");
+
     const res = await api.post(
       "/orders/place",
       {
@@ -54,7 +57,7 @@ const CheckoutPayment = () => {
       },
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -64,6 +67,7 @@ const CheckoutPayment = () => {
 
   const handleCOD = async () => {
     const orderId = await createOrder("cod");
+
     clearCart();
     navigate("/order-confirmation", {
       state: { orderId, paymentMethod: "cod", totalAmount: state.total },
@@ -73,28 +77,44 @@ const CheckoutPayment = () => {
   const handleRazorpay = async () => {
     const orderId = await createOrder("razorpay");
 
-    const rpOrder = await api.post("/payment/create", {
-      amount: state.total,
-      orderId,
-    });
+    const rpOrder = await api.post(
+      "/payment/create",
+      { amount: state.total, orderId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     const loaded = await loadRazorpayScript();
-    if (!loaded) return alert("Razorpay failed to load");
+    if (!loaded) throw new Error("RAZORPAY_LOAD_FAILED");
+
+    const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY;
+    if (!razorpayKey) throw new Error("RAZORPAY_KEY_MISSING");
 
     new window.Razorpay({
-      key: import.meta.env.VITE_RAZORPAY_KEY,
+      key: razorpayKey,
       amount: rpOrder.data.amount,
       currency: "INR",
       name: "Aditya Enterprises",
       description: "Construction Order Payment",
       order_id: rpOrder.data.id,
       handler: async (response) => {
-        await api.post("/payment/verify", {
-          razorpay_payment_id: response.razorpay_payment_id,
-          razorpay_order_id: response.razorpay_order_id,
-          razorpay_signature: response.razorpay_signature,
-          orderId,
-        });
+        await api.post(
+          "/payment/verify",
+          {
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+            orderId,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         clearCart();
         navigate("/order-confirmation", {
@@ -110,12 +130,23 @@ const CheckoutPayment = () => {
   };
 
   const handlePay = async () => {
-    if (!cartItems.length) return alert("Cart empty");
+    if (!cartItems.length) return alert("Cart is empty");
+
     try {
       setLoading(true);
-      paymentMethod === "cod" ? await handleCOD() : await handleRazorpay();
-    } catch {
-      alert("Payment failed");
+      paymentMethod === "cod"
+        ? await handleCOD()
+        : await handleRazorpay();
+    } catch (err) {
+      console.error("Checkout error:", err);
+
+      if (err.message === "AUTH_MISSING") {
+        alert("Session expired. Please login again.");
+        localStorage.clear();
+        navigate("/login");
+      } else {
+        alert("Payment failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

@@ -8,7 +8,7 @@ const Footer = () => {
         <footer className="footer">
             <div className="footer-content">
                 <div className="footer-section about">
-                    <h3>ConstroMart</h3>
+                    <h3>AdityaEnterprises</h3>
                     <p>Your reliable source for high-quality construction materials. Building the future, one material at a time.</p>
                 </div>
                 <div className="footer-section links">
@@ -22,12 +22,12 @@ const Footer = () => {
                 </div>
                 <div className="footer-section contact">
                     <h3>Contact Us</h3>
-                    <p>Email: support@constromart.com</p>
-                    <p>Phone: +1 (555) 123-4567</p>
+                    <p>Email: adityaenterprisesofficial62@gmail.com</p>
+                    <p>Phone: +91 7667489264</p>
                 </div>
             </div>
             <div className="footer-bottom">
-                &copy; {new Date().getFullYear()} ConstroMart E-commerce. All rights reserved.
+                &copy; {new Date().getFullYear()}AdityaEnterprises E-commerce. All rights reserved.
             </div>
         </footer>
     );

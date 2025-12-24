@@ -175,7 +175,11 @@
 // };
 
 // server/controllers/orderController.js
-import Order from "../models/orderModel.js";
+// server/controllers/orderController.js
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
+const Order = require("../models/orderModel.js");
 
 export const placeOrder = async (req, res) => {
   try {

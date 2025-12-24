@@ -175,25 +175,15 @@
 // };
 
 // server/controllers/orderController.js
-// server/controllers/orderController.js
 import Order from "../models/orderModel.js";
-import OrderItem from "../models/orderItemModel.js";
 
 export const placeOrder = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { items, totalAmount, addressId, paymentMethod } = req.body;
+    const { totalAmount, addressId, paymentMethod } = req.body;
 
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    if (!items || !items.length) {
-      return res.status(400).json({ error: "Cart is empty" });
-    }
-
-    if (!addressId) {
-      return res.status(400).json({ error: "Address missing" });
+    if (!userId || !totalAmount || !addressId || !paymentMethod) {
+      return res.status(400).json({ error: "Missing order data" });
     }
 
     const order = await Order.create({
@@ -204,15 +194,6 @@ export const placeOrder = async (req, res) => {
       payment_status: paymentMethod === "cod" ? "PENDING" : "INITIATED",
       status: "PLACED",
     });
-
-    for (const item of items) {
-      await OrderItem.create({
-        order_id: order.id,
-        product_id: item.productId,
-        quantity: item.quantity,
-        price: item.price,
-      });
-    }
 
     return res.status(201).json({
       success: true,

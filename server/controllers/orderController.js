@@ -176,37 +176,47 @@
 
 // server/controllers/orderController.js
 // server/controllers/orderController.js
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
+// server/controllers/orderController.js
 
-const Order = require("../models/orderModel.js");
+// server/controllers/orderController.js
+import pool from "../config/db.js";
 
 export const placeOrder = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const userId = req.user.id;
     const { totalAmount, addressId, paymentMethod } = req.body;
 
-    if (!userId || !totalAmount || !addressId || !paymentMethod) {
+    if (!totalAmount || !addressId || !paymentMethod) {
       return res.status(400).json({ error: "Missing order data" });
     }
 
-    const order = await Order.create({
-      user_id: userId,
-      total_amount: totalAmount,
-      address_id: addressId,
-      payment_method: paymentMethod,
-      payment_status: paymentMethod === "cod" ? "PENDING" : "INITIATED",
-      status: "PLACED",
-    });
+    const result = await pool.query(
+      `
+      INSERT INTO orders 
+      (user_id, total_amount, address_id, payment_method, payment_status, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+      `,
+      [
+        userId,
+        totalAmount,
+        addressId,
+        paymentMethod,
+        paymentMethod === "cod" ? "PENDING" : "INITIATED",
+        "PLACED",
+      ]
+    );
 
     return res.status(201).json({
       success: true,
-      orderId: order.id,
+      orderId: result.rows[0].id,
     });
-  } catch (err) {
-    console.error("🔥 ORDER ERROR:", err);
-    return res.status(500).json({
-      error: "Order placement failed",
-    });
+  } catch (error) {
+    console.error("🔥 ORDER ERROR:", error);
+    return res.status(500).json({ error: "Order placement failed" });
   }
 };

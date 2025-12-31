@@ -2544,3 +2544,20 @@ body[data-theme="dark"] .search-input-field {
     flex-direction: column;
   }
 }
+.status-pending {
+  background: #ff9800;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.status-done {
+  background: #4caf50;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}

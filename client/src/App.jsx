@@ -122,7 +122,7 @@ import AddProduct from "./pages/AddProduct";
 import InventoryManager from "./pages/InventoryManager";
 
 // ✅ Admin Pages
-import AdminOrders from "./pages/admin/AdminOrders";
+import AdminOrders from "./admin/AdminOrders";
 
 // Global CSS
 import "./App.css";
